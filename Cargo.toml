@@ -9,3 +9,6 @@ description = "A advent of code rust helper"
 include = ["**/*.rs", "Cargo.toml"]
 
 [dependencies]
+chrono = "0.4.23"
+dotenv = "0.15.0"
+reqwest = {version = "0.11.13", features = ["blocking"]}
