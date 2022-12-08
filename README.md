@@ -18,7 +18,13 @@ aoc-bud = "0.0.1"
 
 Usage
 -----
-   
+
+You **must** have a .env file on your project directory with your advent of code session cookie
+
+```sh
+echo AOC_SESSION={yoursessionhere} > .env
+```
+
 ```rust
 use aoc_bud;
 
