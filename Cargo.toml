@@ -1,0 +1,11 @@
+[package]
+name = "aoc-bud"
+version = "0.0.1"
+edition = "2021"
+
+authors = ["no0bie"]
+description = "A advent of code rust helper"
+
+include = ["**/*.rs", "Cargo.toml"]
+
+[dependencies]
