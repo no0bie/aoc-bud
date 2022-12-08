@@ -8,6 +8,11 @@ description = "A advent of code rust helper"
 
 include = ["**/*.rs", "Cargo.toml"]
 
+repository = "https://github.com/no0bie/aoc-bud"
+readme = "README.md"
+
+license = "MIT"
+
 [dependencies]
 chrono = "0.4.23"
 dotenv = "0.15.0"

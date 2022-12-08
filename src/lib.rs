@@ -111,11 +111,32 @@ fn _mitm(day: u8, year: u16) -> String{
     content
 }
 
+/// 
+///  Requests puzzle from todays date
+///     
+///     Returns:
+/// 
+///         puzzle: String -> Unsplitted puzzle input 
+///
 pub fn new() -> String{
     let (day, year): (u8, u16) = _get_date();
     _mitm(day, year)
 }
 
+/// 
+///  Requests puzzle from specified date
+/// 
+/// 
+///     Parameters:
+/// 
+///         day: u8   -> Day of the puzzle
+/// 
+///         year: u16 -> Year of the puzzle
+///     
+///     Returns:
+/// 
+///         puzzle: String -> Unsplitted puzzle input 
+///
 pub fn new_custom(day: u8, year: u16) -> String{
     _mitm(day, year)
 }
