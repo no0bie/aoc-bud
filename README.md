@@ -2,8 +2,8 @@
 aoc-bud: `Module that aims to help during advent of code puzzles.`
 ==================================================================
 
-> v0.0.1: + requests puzzle input, saves as a file, to avoid spamming the server with unnecessary calls, and finally returns it as a string
-> v0.0.2: + able to post solution to advent of code and receive server message
+- v0.0.1: + requests puzzle input, saves as a file, to avoid spamming the server with unnecessary calls, and finally returns it as a string
+- v0.0.2: + able to post solution to advent of code and receive server message
 
 Installation
 ------------
