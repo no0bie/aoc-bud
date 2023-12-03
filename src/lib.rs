@@ -1,255 +1,167 @@
 use std::{
-    fs,
-    env::var, 
-    path::Path, 
-    process::exit
+    env, fs,
+    io::{Read, Write},
+    net::TcpStream,
+    path::Path,
 };
 
 use dotenv::dotenv;
-use chrono::Datelike;
-use reqwest::blocking;
+use env::var;
+use native_tls::{TlsConnector, TlsStream};
 
-struct WebScraper{
-    url: String,
-    session: String,
-    client: blocking::Client,
-}
+const HOST: &str = "adventofcode.com";
+const PORT: u16 = 443;
+const INPUT_FOLDER: &str = "aoc_inputs";
 
-impl WebScraper{
+#[cfg(feature = "test")]
+use regex::Regex;
 
+#[cfg(feature = "time")]
+use time::{macros::offset, OffsetDateTime};
 
-    fn get_input(&self) -> String{
-
-        let content: blocking::Response = self.client
-        .get(format!("{}/input", self.url))
-        .header("cookie", &self.session)
-        .send().unwrap();
-
-        if !content.status().is_success(){
-            println!("Something went wrong. Status code: {}", content.status());
-            exit(1);
-        }
-
-        let content: String = content.text().unwrap();
-        let content: String = content[0..content.len()-1].to_string();
-
-        if content == "Puzzle inputs differ by user.  Please log in to get your puzzle input."{
-            println!("Looks like your session cookie is not working. Failed to authenticate");
-            exit(1);
-        }
-
-        content
-    }
-
-    fn get_level(&self) -> String{
-        let content = self.client
-        .get(format!("{}", self.url))
-        .header("cookie", &self.session)
-        .send().unwrap()
-        .text().unwrap();
-
-        let document = scraper::Html::parse_document(&content);
-        let level_selector = scraper::Selector::parse(r#"input[name="level"]"#).unwrap();
-
-        let level: &str = match document.select(&level_selector).next(){
-            Some(element) => element.value().attr("value").unwrap(),
-            _ => {
-                println!("Something went wrong, have you already completed the puzzle or is your session incorrect? Defaulting to first part");
-                "1"
-            }
-
-        };
-
-        level.to_string()
-    }
-
-    fn test_solution(&self, solution: &String) -> String{
-
-        let content = self.client
-        .post(format!("{}/answer", self.url))
-        .header("cookie", &self.session)
-        .form(&[
-            ("level", &self.get_level()),
-            ("answer", solution),
-        ])
-        .send().unwrap()
-        .text().unwrap();
-        
-        let document = scraper::Html::parse_document(&content);
-        let answer_selector = scraper::Selector::parse("main>article>p").unwrap();
-
-        let answer = String::from_iter(
-            document.select(&answer_selector)
-            .next()
-            .unwrap()
-            .children()
-            .map(|child|{
-
-            if child.value().is_text(){
-                return child.value().as_text().unwrap() as &str;
-            }
-
-            ""
-        }).collect::<Vec<&str>>());
-
-        if answer.contains("too recently"){
-           return answer;
-        }
-        else if answer.contains("not the right answer"){
-            let mut answer = answer.split(".");
-            return format!("{}.{}", answer.nth(0).unwrap(), answer.nth(1).unwrap())
-        }
-
-        // Missing correct answer arm
-
-        answer
-
-    }
-}
-
-struct AocFile {
+struct AocInput {
     path: String,
 }
 
-impl AocFile{
-    fn dir_create(){
-        if !Path::new("aoc_inputs").exists() {
-            match fs::create_dir("aoc_inputs"){
-                Ok(val) => val,
-                Err(err) => println!("Failed to create dir, maybe you don't have permission to write?\nError : {}", err)
-            };
+impl AocInput {
+    fn new(day: u8, year: i32) -> Result<Self, String> {
+        if !Path::new(INPUT_FOLDER).exists() {
+            fs::create_dir(INPUT_FOLDER).map_err(|e| {
+                format!("Failed to create directory 'aoc_inputs'.\nFs create_dir error: {e}")
+            })?;
+        }
+
+        return Ok(AocInput {
+            path: format!("./{INPUT_FOLDER}/{day}_{year}.input"),
+        });
+    }
+
+    fn read(&self) -> Option<String> {
+        if Path::new(&self.path).exists() {
+            return Some(
+                fs::read_to_string(&self.path).expect("The file exits but it can't be read"),
+            );
+        }
+        None
+    }
+
+    fn write(&self, contents: &str) -> Result<(), String> {
+        fs::write(&self.path, contents)
+            .map_err(|e| format!("Failed to write content problem input.\nFs write error: {e}"))
+    }
+}
+
+struct Client {
+    session: String,
+    stream: TlsStream<TcpStream>,
+    path: String,
+    input: AocInput,
+}
+
+impl Client {
+    fn new(day: u8, year: i32) -> Result<Self, String> {
+        dotenv().ok();
+        let cookie = var("AOC_SESSION").expect("AOC_SESSION must be set in the .env file");
+
+        let tcp = TcpStream::connect(format!("{HOST}:{PORT}"))
+            .map_err(|e| format!("Unable to connect to adventofcode, maybe your internet is down?\nTcpStream Error: {}", e))?;
+
+        let connector = TlsConnector::new().expect("Unable to create a TlsConnector");
+
+        let stream = connector.connect(HOST, tcp)
+            .map_err(|e| format!("Unable to connect to adventofcode, maybe your internet is down?\nTlsStream Error: {}", e))?;
+
+        Ok(Self {
+            session: format!("session={}", cookie),
+            stream,
+            path: format!("/{year}/day/{day}"),
+            input: AocInput::new(day, year)?,
+        })
+    }
+
+    fn get(&mut self, path: &str) -> Result<String, String> {
+        let get_request = format!(
+            "GET {0}{path} HTTP/1.1\r\nHost: {HOST}\r\nUser-Aget: AocBud-RustHttp\r\nAccept: */*\r\nCookie: {1}\r\nConnection: close\r\n\r\n",
+            self.path,
+            self.session
+        );
+
+        self.stream.write_all(get_request.as_bytes())
+            .map_err(|e| format!("Couldn't perform the GET request for the endpoint {path}.\nTlsStream write_all error: {e}"))?;
+
+        let mut buf: Vec<u8> = Vec::new();
+
+        self.stream.read_to_end(&mut buf)
+            .map_err(|e| format!("Couldn't read the response for the endpoint {path}.\nTlsStream read_to_end error {e}"))?;
+
+        Ok(String::from_utf8_lossy(&buf)
+            .split_once("\r\n\r\n")
+            .expect("Response has no body")
+            .1
+            .to_string())
+    }
+
+    fn get_input(&mut self) -> Result<String, String> {
+        if let Some(input) = self.input.read() {
+            return Ok(input);
+        }
+        let contents = &mut self.get("/input")?;
+        self.input.write(contents)?;
+        Ok(contents.to_string())
+    }
+
+    #[cfg(feature = "test")]
+    fn get_test_input(&mut self) -> Result<String, String> {
+        let re = Regex::new(r"(?s)<pre><code>(.*)</code></pre>").unwrap();
+        let html = self.get("").unwrap();
+        if let Some(captures) = re.captures(&html) {
+            if let Some(test_input) = captures.get(1) {
+                return Ok(test_input.as_str().to_string());
+            }
+        }
+
+        Err(String::from("Couldn't find test input"))
+    }
+}
+
+pub struct AoC {
+    client: Client,
+}
+
+impl AoC {
+    pub fn new(day: u8, year: i32) -> Self {
+        match Client::new(day, year) {
+            Ok(client) => AoC { client },
+            Err(e) => panic!("{e}"),
         }
     }
 
-    fn exists(&self) -> bool{
-        Self::dir_create();
-        Path::new(&self.path).exists()
+    pub fn input(&mut self) -> String {
+        match self.client.get_input() {
+            Ok(contents) => contents.to_string(),
+            Err(e) => panic!("{e}"),
+        }
     }
 
-    fn read(&self) -> String{
-        fs::read_to_string(&self.path)
-        .expect("Suddenly the file disappeared")
+    #[cfg(feature = "test")]
+    pub fn test_input(&mut self) -> String {
+        match self.client.get_test_input() {
+            Ok(contents) => contents,
+            Err(e) => panic!("{e}"),
+        }
     }
 
-    fn write(&self, content: &String){
-        match fs::write(&self.path, content){
-            Ok(val) => val,
-            Err(err) => println!("Failed to write content, maybe you don't have permission to write?\nError : {}", err)
-        };
-    }
-}
+    #[cfg(feature = "time")]
+    pub fn today() -> Self {
+        let date = OffsetDateTime::now_utc().to_offset(offset!(-5));
 
-fn _setup_scrapper(day: u8, year: u16) -> WebScraper{
-    WebScraper {
-        url : format!("https://adventofcode.com/{year}/day/{day}"),
-        session : _get_session(),
-        client: blocking::Client::new(),
-    }
-}
-
-fn _setup_file(day: &u8, year: &u16) -> AocFile{
-    AocFile {
-        path: format!("./aoc_inputs/day{day}_year{year}"),
-    }
-}
-
-fn _get_session() -> String{
-    dotenv().ok();
-    let cookie: String = var("AOC_SESSION").expect("AOC_SESSION cookie value must be set.");
-    format!("session={cookie}")
-}
-
-
-fn _get_date() -> (u8, u16) {
-    let c_date = chrono::Utc::now().date_naive();
-    (c_date.day() as u8, c_date.year() as u16)
-}
-
-fn _mitm_new(day: u8, year: u16) -> String{
-    let file: AocFile = _setup_file(&day, &year);
-
-    if file.exists(){
-        return file.read();
+        match Client::new(date.day(), date.year()) {
+            Ok(client) => AoC { client },
+            Err(e) => panic!("{e}"),
+        }
     }
 
-    let web_scrapper: WebScraper = _setup_scrapper(day, year);
-    let content: String = web_scrapper.get_input();
-    
-    file.write(&content);
-    content
-}
-
-fn _mitm_solve(day: u8, year: u16, solution: &String) -> String{
-    let web_scraper: WebScraper = _setup_scrapper(day, year);
-
-    web_scraper.test_solution(solution)
-}
-
-/// 
-///  Requests puzzle from todays date
-///     
-///     Returns:
-/// 
-///         puzzle: String -> Unsplitted puzzle input 
-///
-pub fn new() -> String{
-    let (day, year): (u8, u16) = _get_date();
-    _mitm_new(day, year)
-}
-
-/// 
-///  Requests puzzle from specified date
-/// 
-/// 
-///     Parameters:
-/// 
-///         day: u8   -> Day of the puzzle
-/// 
-///         year: u16 -> Year of the puzzle
-///     
-///     Returns:
-/// 
-///         puzzle: String -> Unsplitted puzzle input 
-///
-pub fn new_custom(day: u8, year: u16) -> String{
-    _mitm_new(day, year)
-}
-
-/// 
-///  Send your solution to advent of code, automatically detects what part you're on
-/// 
-/// 
-///     Parameters:
-/// 
-///         solution: &String -> Your solution
-///     
-///     Returns:
-/// 
-///         server_message: String -> Parsed server message
-/// 
-pub fn solve(solution: &String) -> String{
-    let (day, year): (u8, u16) = _get_date();
-
-    _mitm_solve(day, year, solution)
-}
-
-/// 
-///  Send your solution to advent of code.
-///  Automatically detects what part you're on.
-/// 
-/// 
-///     Parameters:
-/// 
-///         day: u8   -> Day of the puzzle you're solving
-/// 
-///         year: u16 -> Year of the puzzle you're solving
-/// 
-///         solution: &String -> Your solution
-///     
-///     Returns:
-/// 
-///         server_message: String -> Parsed server message
-///
-pub fn solve_custom(day: u8, year: u16, solution: &String) -> String{
-    _mitm_solve(day, year, solution)
+    pub fn solve(&self) -> Result<(), String> {
+        Ok(())
+    }
 }

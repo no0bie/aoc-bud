@@ -14,7 +14,11 @@ readme = "README.md"
 license = "MIT"
 
 [dependencies]
-chrono = "0.4.23"
 dotenv = "0.15.0"
-reqwest = {version = "0.11.13", features = ["blocking"]}
-scraper = "0.13.0"
+native-tls = "0.2.11"
+regex = { version = "1.10.2", optional = true }
+time = { version = "0.3.30", features = ["macros"], optional = true}
+
+[features]
+time = ["dep:time"]
+test = ["dep:regex"]
