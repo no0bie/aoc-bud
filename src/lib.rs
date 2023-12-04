@@ -5,15 +5,15 @@ use std::{
     path::Path,
 };
 
+use native_tls::{TlsConnector, TlsStream};
 use dotenv::dotenv;
 use env::var;
-use native_tls::{TlsConnector, TlsStream};
+
+pub use regex::Regex;
 
 const HOST: &str = "adventofcode.com";
 const PORT: u16 = 443;
 const INPUT_FOLDER: &str = "aoc_inputs";
-
-pub use regex::Regex;
 
 #[cfg(feature = "time")]
 use time::{macros::offset, OffsetDateTime};
