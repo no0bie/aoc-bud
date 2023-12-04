@@ -5,9 +5,9 @@ use std::{
     path::Path,
 };
 
-use native_tls::{TlsConnector, TlsStream};
 use dotenv::dotenv;
 use env::var;
+use native_tls::{TlsConnector, TlsStream};
 
 pub use regex::Regex;
 
@@ -170,7 +170,6 @@ impl Client {
     }
 
     fn check_404(&self, contents: &str) -> Result<(), String> {
-        println!("n");
         if let Some(_) = contents.split_once("404 Not Found") {
             return Err(format!(
                 "The puzzle for day {0} of {1} does not exist!",
