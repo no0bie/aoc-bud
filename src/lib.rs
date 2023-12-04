@@ -225,12 +225,12 @@ impl Client {
     }
 }
 
-pub struct AoC {
+pub struct Aoc {
     client: Client,
 }
 
-impl AoC {
-    /// Creates a new [`AoC`].
+impl Aoc {
+    /// Creates a new [`Aoc`].
     ///
     /// # Arguments
     ///
@@ -240,10 +240,10 @@ impl AoC {
     /// # Examples:
     ///
     /// ```
-    /// use aoc_bud::AoC;
+    /// use aoc_bud::Aoc;
     ///
     /// // Create a new handler for the first aoc day of 2023
-    /// let aoc = AoC::new(1, 2023);
+    /// let aoc = Aoc::new(1, 2023);
     /// ```
     /// # Panics
     ///
@@ -263,9 +263,9 @@ impl AoC {
     /// # Examples:
     ///
     /// ```
-    /// use aoc_bud::AoC;
+    /// use aoc_bud::Aoc;
     ///
-    /// let aoc: AoC = AoC::new(1, 2023);
+    /// let aoc: Aoc = Aoc::new(1, 2023);
     /// let input: String = aoc.input();
     /// ```
     ///
@@ -287,9 +287,9 @@ impl AoC {
     /// # Examples:
     ///
     /// ```
-    /// use aoc_bud::AoC;
+    /// use aoc_bud::Aoc;
     ///
-    /// let aoc: AoC = AoC::new(1, 2023);
+    /// let aoc: Aoc = Aoc::new(1, 2023);
     /// let test_input: String = aoc.test_input();
     /// ```
     ///
@@ -308,16 +308,16 @@ impl AoC {
     }
 
     #[cfg(feature = "time")]
-    /// Creates a new [`AoC`] with the current date.
+    /// Creates a new [`Aoc`] with the current date.
     /// Only useful if the the aoc is ongoing.
     ///
     /// # Examples:
     ///
     /// ```
-    /// use aoc_bud::AoC;
+    /// use aoc_bud::Aoc;
     ///
     /// // Create a new handler for the current day
-    /// let aoc = AoC::today();
+    /// let aoc = Aoc::today();
     /// ```
     /// # Panics
     ///
@@ -343,9 +343,9 @@ impl AoC {
     /// # Example:
     ///
     /// ```
-    /// use aoc_bud::AoC;
+    /// use aoc_bud::Aoc;
     ///
-    /// let aoc: AoC = AoC::new(1, 2023);
+    /// let aoc: Aoc = Aoc::new(1, 2023);
     /// let input: String = aoc.input();
     ///
     /// let solution = get_solution(input);
@@ -374,9 +374,9 @@ impl AoC {
     /// # Example:
     ///
     /// ```
-    /// use aoc_bud::AoC;
+    /// use aoc_bud::Aoc;
     ///
-    /// let aoc: AoC = AoC::new(1, 2023);
+    /// let aoc: Aoc = Aoc::new(1, 2023);
     /// let input: String = aoc.input();
     ///
     /// let solution = get_solution(input);
