@@ -1,6 +1,6 @@
 [package]
 name = "aoc-bud"
-version = "0.0.2"
+version = "0.0.3"
 edition = "2021"
 
 authors = ["no0bie"]
@@ -16,9 +16,8 @@ license = "MIT"
 [dependencies]
 dotenv = "0.15.0"
 native-tls = "0.2.11"
-regex = { version = "1.10.2", optional = true }
+regex = "1.10.2"
 time = { version = "0.3.30", features = ["macros"], optional = true}
 
 [features]
 time = ["dep:time"]
-test = ["dep:regex"]
